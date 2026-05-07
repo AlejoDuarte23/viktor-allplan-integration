@@ -1,0 +1,6 @@
+executables:
+  allplan_pile_cap:
+    path: 'C:\Program Files\Allplan\Allplan 2026\Prg\Python\python.exe'
+    arguments:
+      - 'run_allplan_model.py'
+maxParallelProcesses: 1
