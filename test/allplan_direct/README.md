@@ -11,6 +11,9 @@ Copy these files to a Windows machine with Allplan 2026 installed.
 - `SimpleCube.pyp`: Allplan PythonPart definition.
 - `SimpleCube.py`: Python logic that creates one 1000 x 1000 x 1000 mm cube.
 - `install_simple_cube.ps1`: Windows helper that copies the files into Allplan.
+- `PileCapTest.pyp`: Allplan PythonPart definition for a pile cap test.
+- `PileCapTest.py`: Python logic that creates one cap and four piles.
+- `install_pile_cap.ps1`: Windows helper that copies the pile cap test into Allplan.
 
 ## Run On Windows
 
@@ -34,6 +37,33 @@ To copy the files and start Allplan in one command:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\test\allplan_direct\install_simple_cube.ps1 -StartAllplan
+```
+
+## Run The Pile Cap Test
+
+From the repo root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\test\allplan_direct\install_pile_cap.ps1
+```
+
+This copies:
+
+```text
+$HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonParts\PileCapTest.pyp
+$HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\PileCapTest.py
+```
+
+Then open Allplan, find `Pile Cap Test` in the PythonParts library, and place it
+in a drawing file. It creates:
+
+- one 4000 x 3000 x 800 mm pile cap
+- four 600 mm diameter piles, 3000 mm deep
+
+To copy the files and start Allplan in one command:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\test\allplan_direct\install_pile_cap.ps1 -StartAllplan
 ```
 
 If your Allplan local folder is different, pass it explicitly:
