@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 
 import viktor as vkt
-from viktor.external.generic import GenericAnalysis
+from viktor.external.python import PythonAnalysis
 
 from pile_cap_model import PileCapParameters
 
@@ -85,16 +85,15 @@ class Controller(vkt.Controller):
 
         files = [
             ("inputs.json", vkt.File.from_data(json.dumps(model.to_worker_input(), indent=2))),
-            ("run_allplan_model.py", vkt.File.from_path(ALLPLAN_WORKER_DIR / "run_allplan_model.py")),
             ("PileCapWorker.pyp", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.pyp")),
             ("PileCapWorker.py", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.py")),
         ]
 
-        analysis = GenericAnalysis(
+        analysis = PythonAnalysis(
+            script=vkt.File.from_path(ALLPLAN_WORKER_DIR / "run_allplan_model.py"),
             files=files,
-            executable_key="allplan_pile_cap",
         )
-        vkt.progress_message("Starting Allplan worker.")
+        vkt.progress_message("Starting Allplan Python worker.")
         analysis.execute(timeout=900)
 
         vkt.UserMessage.success("Allplan launch command finished. Check Allplan for the generated geometry.")

@@ -6,7 +6,7 @@ cap.
 The app does two things:
 
 - shows the pile cap and four piles in a VIKTOR `GeometryView`
-- sends the same parameters to Allplan through a generic worker action
+- sends the same parameters to Allplan through a Python worker action
 
 It does not retrieve results from Allplan. The worker only starts Allplan and
 asks it to create the geometry.
@@ -21,27 +21,26 @@ viktor-cli start
 
 Open the local app URL shown by VIKTOR.
 
-## Worker Config
+## Worker Setup
 
-Copy this example into the generic worker `config.yaml`:
+This app uses the VIKTOR Python worker through `viktor.external.python.PythonAnalysis`.
 
-```yaml
-executables:
-  allplan_pile_cap:
-    path: 'C:\Program Files\Allplan\Allplan 2026\Prg\Python\python.exe'
-    arguments:
-      - 'run_allplan_model.py'
-maxParallelProcesses: 1
+The app config already declares the worker integration:
+
+```toml
+worker_integrations = [
+    "python"
+]
 ```
 
-Restart the generic worker after changing `config.yaml`.
+No executable key configuration is used.
 
 ## Allplan Flow
 
 When the `Create geometry in Allplan` button is clicked:
 
 1. VIKTOR sends `inputs.json`, `run_allplan_model.py`, `PileCapWorker.pyp`, and
-   `PileCapWorker.py` to the generic worker.
+   `PileCapWorker.py` to the Python worker.
 2. The worker copies the PythonPart files and inputs to:
 
 ```text

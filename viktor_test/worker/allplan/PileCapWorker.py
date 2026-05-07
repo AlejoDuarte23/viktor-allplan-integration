@@ -1,4 +1,4 @@
-"""Allplan PythonPart script executed by the VIKTOR generic worker."""
+"""Allplan PythonPart script executed from the VIKTOR Python worker flow."""
 
 from __future__ import annotations
 
