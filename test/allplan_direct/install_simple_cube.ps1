@@ -1,6 +1,6 @@
 param(
     [string]$AllplanLocal = (Join-Path $HOME "Documents\Nemetschek\Allplan\2026\Usr\Local"),
-    [string]$AllplanExe = "C:\Program Files\Allplan\2026\Prg\Allplan_2026.exe",
+    [string]$AllplanExe = "C:\Program Files\Allplan\Allplan 2026\Prg\Allplan_2026.exe",
     [switch]$StartAllplan
 )
 

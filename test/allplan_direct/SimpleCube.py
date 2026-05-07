@@ -25,4 +25,11 @@ def create_element(_build_ele, _doc) -> CreateElementResult:
     elements = ModelEleList()
     elements.append_geometry_3d(cube)
 
-    return CreateElementResult(elements)
+    result = CreateElementResult(elements)
+
+    # This avoids waiting for a manual click in Allplan.
+    # The cube is inserted at global coordinates X=0, Y=0, Z=0.
+    result.placement_point = AllplanGeo.Point3D(0.0, 0.0, 0.0)
+    result.multi_placement = False
+
+    return result
