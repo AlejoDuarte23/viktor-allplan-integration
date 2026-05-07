@@ -10,42 +10,44 @@ Copy these files to a Windows machine with Allplan 2026 installed.
 
 - `SimpleCube.pyp`: Allplan PythonPart definition.
 - `SimpleCube.py`: Python logic that creates one 1000 x 1000 x 1000 mm cube.
+- `install_simple_cube.ps1`: Windows helper that copies the files into Allplan.
 
-## Install In Allplan
+## Run On Windows
 
-Copy:
+From the repo root:
 
-```text
-SimpleCube.pyp
+```powershell
+powershell -ExecutionPolicy Bypass -File .\test\allplan_direct\install_simple_cube.ps1
 ```
 
-to your user PythonParts folder, for example:
+This copies the files to:
 
 ```text
-C:\ProgramData\Nemetschek\Allplan\2026\Usr\Local\PythonParts\SimpleCube.pyp
-```
-
-Copy:
-
-```text
-SimpleCube.py
-```
-
-to your user PythonPartsScripts folder, for example:
-
-```text
-C:\ProgramData\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\SimpleCube.py
+$HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonParts\SimpleCube.pyp
+$HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\SimpleCube.py
 ```
 
 Then open Allplan, find `Simple Cube Test` in the PythonParts library, and place it
 in a drawing file.
 
-## Optional Command Line Start
-
-On Windows, you can also try:
+To copy the files and start Allplan in one command:
 
 ```powershell
-& "C:\Program Files\Allplan\2026\Prg\Allplan_2026.exe" -o "@C:\ProgramData\Nemetschek\Allplan\2026\Usr\Local\PythonParts\SimpleCube.pyp"
+powershell -ExecutionPolicy Bypass -File .\test\allplan_direct\install_simple_cube.ps1 -StartAllplan
+```
+
+If your Allplan local folder is different, pass it explicitly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\test\allplan_direct\install_simple_cube.ps1 -AllplanLocal "C:\Users\AlejandroDuarteVendr\Documents\Nemetschek\Allplan\2026\Usr\Local"
+```
+
+## Optional Command Line Start
+
+After running the install script, you can also start it manually:
+
+```powershell
+& "C:\Program Files\Allplan\2026\Prg\Allplan_2026.exe" -o "@$HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonParts\SimpleCube.pyp"
 ```
 
 ## Reference
