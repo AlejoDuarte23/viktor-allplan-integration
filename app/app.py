@@ -80,6 +80,7 @@ class Controller(vkt.Controller):
 
         files = [
             ("inputs.json", vkt.File.from_data(json.dumps(worker_input, indent=2))),
+            ("template_project.zip", vkt.File.from_path(ALLPLAN_WORKER_DIR / "viktor-template.prj.zip")),
             ("PileCapWorker.pyp", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.pyp")),
             ("PileCapWorker.py", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.py")),
         ]
@@ -87,11 +88,13 @@ class Controller(vkt.Controller):
         analysis = PythonAnalysis(
             script=vkt.File.from_path(ALLPLAN_WORKER_DIR / "run_allplan_model.py"),
             files=files,
+            output_filenames=["result_project.zip"],
         )
-        vkt.progress_message("Starting Allplan Python worker.")
+        vkt.progress_message("Starting Allplan worker.")
         analysis.execute(timeout=900)
+        analysis.get_output_file("result_project.zip")
 
-        vkt.UserMessage.success("Allplan created the pile cap geometry and closed.")
+        vkt.UserMessage.success("Allplan project generated.")
 
     @staticmethod
     def get_pile_centers(pile_spacing_x: float, pile_spacing_y: float) -> list[dict[str, float | str]]:

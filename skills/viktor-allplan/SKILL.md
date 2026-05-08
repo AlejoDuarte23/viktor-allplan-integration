@@ -10,9 +10,12 @@ Use this skill to create a simple VIKTOR-to-Allplan flow:
 1. Build parametric inputs in VIKTOR.
 2. Preview the model with `GeometryView`.
 3. Send the same parameters to a Windows Python worker with `PythonAnalysis`.
-4. Copy a PythonPart into Allplan user folders.
-5. Start Allplan directly from the Python launcher.
-6. Close Allplan from the PythonPart when the worker must finish automatically.
+4. Send a template Allplan project ZIP to the worker.
+5. Install the template project into Allplan's real project folder.
+6. Copy a PythonPart into Allplan user folders.
+7. Start Allplan directly from the Python launcher.
+8. Open the project, load drawing file slot 1, create geometry, and close Allplan.
+9. Zip the generated Allplan project back to VIKTOR.
 
 Keep the first version small: geometry first, then reinforcement or exports later.
 Prefer one obvious worker path over configurable fallbacks. Do not add environment
@@ -30,7 +33,8 @@ path.
 │   └── worker/
 │       ├── run_allplan_model.py
 │       ├── PileCapWorker.pyp
-│       └── PileCapWorker.py
+│       ├── PileCapWorker.py
+│       └── viktor-template.prj.zip
 ├── requirements.txt
 └── viktor.config.toml
 ```
@@ -77,12 +81,15 @@ class Controller(vkt.Controller):
             script=vkt.File.from_path(WORKER_DIR / "run_allplan_model.py"),
             files=[
                 ("inputs.json", vkt.File.from_data(json.dumps(data, indent=2))),
+                ("template_project.zip", vkt.File.from_path(WORKER_DIR / "viktor-template.prj.zip")),
                 ("PileCapWorker.pyp", vkt.File.from_path(WORKER_DIR / "PileCapWorker.pyp")),
                 ("PileCapWorker.py", vkt.File.from_path(WORKER_DIR / "PileCapWorker.py")),
             ],
+            output_filenames=["result_project.zip"],
         )
         analysis.execute(timeout=900)
-        vkt.UserMessage.success("Allplan created the geometry and closed.")
+        analysis.get_output_file("result_project.zip")
+        vkt.UserMessage.success("Allplan project generated.")
 ```
 
 Use this config:
@@ -111,15 +118,18 @@ viktor>=14.17.0
 
 The Python worker script should:
 
-1. Read `inputs.json` from the worker directory.
-2. Copy `.pyp`, `.py`, and `inputs.json` into Allplan user folders.
-3. Start Allplan directly with `subprocess.run`.
+1. Receive `template_project.zip`, `inputs.json`, `.pyp`, and `.py`.
+2. Extract the template ZIP into Allplan's real project folder.
+3. Copy `.pyp`, `.py`, and `inputs.json` into Allplan user folders.
+4. Start Allplan directly with `subprocess.run`.
+5. After Allplan closes, zip the generated project folder as `result_project.zip`.
 
 Default Allplan paths:
 
 ```text
 $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonParts\ViktorWorker
 $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\ViktorWorker
+C:\Data\Allplan\Allplan 2026\Prj\viktor-template.prj
 ```
 
 ## Launcher Command
@@ -130,6 +140,9 @@ and can misread quoted paths.
 
 ```python
 ALLPLAN_EXE = Path(r"C:\Program Files\Allplan\Allplan 2026\Prg\Allplan_2026.exe")
+ALLPLAN_PROJECTS_DIR = Path(r"C:\Data\Allplan\Allplan 2026\Prj")
+PROJECT_NAME = "viktor-template"
+PROJECT_DIR = ALLPLAN_PROJECTS_DIR / f"{PROJECT_NAME}.prj"
 
 subprocess.run(
     [
@@ -139,6 +152,12 @@ subprocess.run(
     ],
     cwd=str(workdir),
     check=True,
+)
+
+shutil.make_archive(
+    base_name=str(output_zip.with_suffix("")),
+    format="zip",
+    root_dir=str(PROJECT_DIR),
 )
 ```
 
@@ -168,7 +187,7 @@ def check_allplan_version(build_ele, version):
 
 
 def create_element(build_ele, doc):
-    # Read inputs, create Allplan geometry directly in the drawing file, then
-    # call ProjectService.CloseAllplan() so the Python worker can finish.
+    # Read inputs, open project viktor-template, load drawing slot 1, create
+    # Allplan geometry, then call ProjectService.CloseAllplan().
     ...
 ```

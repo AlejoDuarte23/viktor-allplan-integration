@@ -7,6 +7,10 @@ from CreateElementResult import CreateElementResult
 from TypeCollections.ModelEleList import ModelEleList
 
 
+PROJECT_NAME = "viktor-template"
+DRAWING_FILE_NUMBER = 1
+
+
 def check_allplan_version(build_ele, version: float) -> bool:
     return True
 
@@ -16,6 +20,31 @@ def _load_inputs() -> dict:
         data = json.load(file)
 
     return data
+
+
+def _open_project(doc):
+    current_project_name, host_name = AllplanBaseElements.ProjectService.GetCurrentProjectNameAndHost()
+
+    open_result = AllplanBaseElements.ProjectService.OpenProject(
+        doc,
+        host_name,
+        PROJECT_NAME,
+    )
+
+    if open_result not in ("Project opened", "Active project", "project opened"):
+        raise RuntimeError(
+            f"Could not open ALLPLAN project '{PROJECT_NAME}'. "
+            f"Current project was '{current_project_name}'. "
+            f"ALLPLAN returned: '{open_result}'."
+        )
+
+
+def _load_drawing_file(doc):
+    AllplanBaseElements.DrawingFileService.LoadFile(
+        doc,
+        DRAWING_FILE_NUMBER,
+        AllplanBaseElements.DrawingFileLoadState.ActiveForeground,
+    )
 
 
 def _create_model_elements(data: dict) -> ModelEleList:
@@ -55,6 +84,11 @@ def _create_model_elements(data: dict) -> ModelEleList:
 def create_element(build_ele, doc) -> CreateElementResult:
     try:
         data = _load_inputs()
+
+        _open_project(doc)
+        _load_drawing_file(doc)
+        AllplanBaseElements.DrawingFileService.DeleteDocument(doc)
+
         elements = _create_model_elements(data)
 
         AllplanBaseElements.CreateElements(
