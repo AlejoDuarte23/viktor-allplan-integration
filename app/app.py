@@ -1,30 +1,20 @@
-from __future__ import annotations
-
 import json
-import textwrap
 from pathlib import Path
 
 import viktor as vkt
 from viktor.external.python import PythonAnalysis
 
-from pile_cap_model import PileCapParameters
-
 
 APP_DIR = Path(__file__).parent
-ALLPLAN_WORKER_DIR = APP_DIR / "worker" / "allplan"
+ALLPLAN_WORKER_DIR = APP_DIR / "worker"
 
 
 class Parametrization(vkt.Parametrization):
     geometry = vkt.Section("Geometry", initially_expanded=True)
     geometry.intro = vkt.Text(
-        textwrap.dedent(
-            """\
-            # Four Pile Cap
-
-            Parametric CAD test for one rectangular pile cap supported by four piles.
-            Dimensions are in millimeters.
-            """
-        )
+        "# Four Pile Cap\n\n"
+        "Parametric CAD test for one rectangular pile cap supported by four piles.\n"
+        "Dimensions are in millimeters."
     )
     geometry.cap_length = vkt.NumberField("Pile cap length", default=4000.0, min=1000.0, suffix="mm", flex=50)
     geometry.cap_width = vkt.NumberField("Pile cap width", default=3000.0, min=1000.0, suffix="mm", flex=50)
@@ -49,29 +39,27 @@ class Controller(vkt.Controller):
 
     @vkt.GeometryView("Geometry", duration_guess=1, x_axis_to_right=True)
     def geometry_view(self, params, **kwargs):
-        model = PileCapParameters.from_params(params)
-
         concrete = vkt.Material("Concrete", color=(190, 190, 185), opacity=0.75)
         pile_material = vkt.Material("Pile concrete", color=(145, 145, 140), opacity=0.85)
 
         cap = vkt.RectangularExtrusion(
-            model.cap_length,
-            model.cap_width,
-            vkt.Line(vkt.Point(0.0, 0.0, 0.0), vkt.Point(0.0, 0.0, model.cap_height)),
+            params.geometry.cap_length,
+            params.geometry.cap_width,
+            vkt.Line(vkt.Point(0.0, 0.0, 0.0), vkt.Point(0.0, 0.0, params.geometry.cap_height)),
             material=concrete,
             identifier="pile-cap",
         )
 
         geometry = [cap]
 
-        for pile in model.pile_centers:
+        for pile in self.get_pile_centers(params.geometry.pile_spacing_x, params.geometry.pile_spacing_y):
             line = vkt.Line(
-                vkt.Point(pile["x"], pile["y"], -model.pile_depth),
+                vkt.Point(pile["x"], pile["y"], -params.geometry.pile_depth),
                 vkt.Point(pile["x"], pile["y"], 0.0),
             )
             geometry.append(
                 vkt.CircularExtrusion(
-                    model.pile_diameter,
+                    params.geometry.pile_diameter,
                     line,
                     material=pile_material,
                     identifier=pile["id"],
@@ -81,13 +69,19 @@ class Controller(vkt.Controller):
         return vkt.GeometryResult(geometry=geometry)
 
     def create_in_allplan(self, params, **kwargs) -> None:
-        model = PileCapParameters.from_params(params)
+        worker_input = {
+            "cap_length": params.geometry.cap_length,
+            "cap_width": params.geometry.cap_width,
+            "cap_height": params.geometry.cap_height,
+            "pile_diameter": params.geometry.pile_diameter,
+            "pile_depth": params.geometry.pile_depth,
+            "pile_centers": self.get_pile_centers(params.geometry.pile_spacing_x, params.geometry.pile_spacing_y),
+        }
 
         files = [
-            ("inputs.json", vkt.File.from_data(json.dumps(model.to_worker_input(), indent=2))),
+            ("inputs.json", vkt.File.from_data(json.dumps(worker_input, indent=2))),
             ("PileCapWorker.pyp", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.pyp")),
             ("PileCapWorker.py", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.py")),
-            ("run_allplan_model.cmd", vkt.File.from_path(ALLPLAN_WORKER_DIR / "run_allplan_model.cmd")),
         ]
 
         analysis = PythonAnalysis(
@@ -98,3 +92,15 @@ class Controller(vkt.Controller):
         analysis.execute(timeout=900)
 
         vkt.UserMessage.success("Allplan command finished.")
+
+    @staticmethod
+    def get_pile_centers(pile_spacing_x: float, pile_spacing_y: float) -> list[dict[str, float | str]]:
+        half_x = pile_spacing_x / 2.0
+        half_y = pile_spacing_y / 2.0
+
+        return [
+            {"id": "P1", "x": -half_x, "y": -half_y},
+            {"id": "P2", "x": half_x, "y": -half_y},
+            {"id": "P3", "x": -half_x, "y": half_y},
+            {"id": "P4", "x": half_x, "y": half_y},
+        ]
