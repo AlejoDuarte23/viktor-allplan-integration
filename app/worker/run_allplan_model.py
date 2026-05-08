@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -52,21 +53,44 @@ def main():
     pyp_target = python_parts_dir / "PileCapWorker.pyp"
     py_target = python_scripts_dir / "PileCapWorker.py"
     inputs_target = python_scripts_dir / "inputs.json"
+    done_marker = python_scripts_dir / "worker_done.txt"
+    result_source = python_scripts_dir / "result.json"
+    output_json = workdir / "result.json"
+
+    if done_marker.exists():
+        done_marker.unlink()
+
+    if result_source.exists():
+        result_source.unlink()
+
+    if output_json.exists():
+        output_json.unlink()
 
     shutil.copy2(pyp_source, pyp_target)
     shutil.copy2(py_source, py_target)
     shutil.copy2(inputs_path, inputs_target)
 
-    subprocess.run(
+    process = subprocess.Popen(
         [
             str(ALLPLAN_EXE),
             "-o",
             f"@{pyp_target}",
         ],
         cwd=str(workdir),
-        check=True,
-        timeout=840,
     )
+
+    deadline = time.time() + 840
+    while not done_marker.exists():
+        if process.poll() is not None:
+            raise RuntimeError(f"Allplan closed before the worker finished. Exit code: {process.returncode}")
+
+        if time.time() > deadline:
+            process.terminate()
+            raise TimeoutError("Allplan worker did not finish within 840 seconds.")
+
+        time.sleep(1)
+
+    shutil.copy2(result_source, output_json)
 
     shutil.make_archive(
         base_name=str(output_zip.with_suffix("")),

@@ -14,8 +14,8 @@ Use this skill to create a simple VIKTOR-to-Allplan flow:
 5. Install the template project into Allplan's real project folder.
 6. Copy a PythonPart into Allplan user folders.
 7. Start Allplan directly from the Python launcher.
-8. Open the project, load drawing file slot 1, create geometry, and close Allplan.
-9. Zip the generated Allplan project back to VIKTOR.
+8. Open the project, load drawing file slot 1, create geometry, and write a done marker.
+9. When the marker exists, return `result.json` and zip the generated Allplan project back to VIKTOR.
 
 Keep the first version small: geometry first, then reinforcement or exports later.
 Prefer one obvious worker path over configurable fallbacks. Do not add environment
@@ -85,10 +85,11 @@ class Controller(vkt.Controller):
                 ("PileCapWorker.pyp", vkt.File.from_path(WORKER_DIR / "PileCapWorker.pyp")),
                 ("PileCapWorker.py", vkt.File.from_path(WORKER_DIR / "PileCapWorker.py")),
             ],
-            output_filenames=["result_project.zip"],
+            output_filenames=["result_project.zip", "result.json"],
         )
         analysis.execute(timeout=900)
         analysis.get_output_file("result_project.zip")
+        analysis.get_output_file("result.json")
         vkt.UserMessage.success("Allplan project generated.")
 ```
 
@@ -121,8 +122,10 @@ The Python worker script should:
 1. Receive `template_project.zip`, `inputs.json`, `.pyp`, and `.py`.
 2. Extract the template ZIP into Allplan's real project folder.
 3. Copy `.pyp`, `.py`, and `inputs.json` into Allplan user folders.
-4. Start Allplan directly with `subprocess.run`.
-5. After Allplan closes, zip the generated project folder as `result_project.zip`.
+4. Start Allplan directly with `subprocess.Popen`.
+5. Wait for `worker_done.txt` next to the copied PythonPart script.
+6. Copy `result.json` back to the worker folder and zip the generated project folder as `result_project.zip`.
+7. Leave Allplan open for inspection.
 
 Default Allplan paths:
 
@@ -144,15 +147,19 @@ ALLPLAN_PROJECTS_DIR = Path(r"C:\Data\Allplan\Allplan 2026\Prj")
 PROJECT_NAME = "viktor-template"
 PROJECT_DIR = ALLPLAN_PROJECTS_DIR / f"{PROJECT_NAME}.prj"
 
-subprocess.run(
+process = subprocess.Popen(
     [
         str(ALLPLAN_EXE),
         "-o",
         f"@{pyp_target}",
     ],
     cwd=str(workdir),
-    check=True,
 )
+
+while not done_marker.exists():
+    if process.poll() is not None:
+        raise RuntimeError("Allplan closed before the worker finished.")
+    time.sleep(1)
 
 shutil.make_archive(
     base_name=str(output_zip.with_suffix("")),
@@ -161,9 +168,9 @@ shutil.make_archive(
 )
 ```
 
-`subprocess.run` waits for the Allplan process. If Allplan stays open, the
-worker stays blocked. To unblock automatically, the PythonPart should create the
-geometry directly and call `ProjectService.CloseAllplan()`.
+The PythonPart writes `result.json` after `CreateElements(...)` succeeds, then
+writes the marker. The marker is the worker finish signal, so the worker does
+not need to wait for Allplan to close.
 
 ## PythonPart Pattern
 
@@ -188,6 +195,6 @@ def check_allplan_version(build_ele, version):
 
 def create_element(build_ele, doc):
     # Read inputs, open project viktor-template, load drawing slot 1, create
-    # Allplan geometry, then call ProjectService.CloseAllplan().
+    # Allplan geometry, then write result.json and worker_done.txt.
     ...
 ```

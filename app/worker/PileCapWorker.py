@@ -82,24 +82,35 @@ def _create_model_elements(data: dict) -> ModelEleList:
 
 
 def create_element(build_ele, doc) -> CreateElementResult:
-    try:
-        data = _load_inputs()
+    data = _load_inputs()
+    done_marker = Path(__file__).with_name("worker_done.txt")
+    result_path = Path(__file__).with_name("result.json")
 
-        _open_project(doc)
-        _load_drawing_file(doc)
-        AllplanBaseElements.DrawingFileService.DeleteDocument(doc)
+    _open_project(doc)
+    _load_drawing_file(doc)
+    AllplanBaseElements.DrawingFileService.DeleteDocument(doc)
 
-        elements = _create_model_elements(data)
+    elements = _create_model_elements(data)
 
-        AllplanBaseElements.CreateElements(
-            doc,
-            AllplanGeo.Matrix3D(),
-            elements,
-            [],
-            None,
-        )
+    AllplanBaseElements.CreateElements(
+        doc,
+        AllplanGeo.Matrix3D(),
+        elements,
+        [],
+        None,
+    )
 
-        return CreateElementResult()
+    result = {
+        "project_name": PROJECT_NAME,
+        "drawing_file_number": DRAWING_FILE_NUMBER,
+        "created": {
+            "pile_cap": 1,
+            "piles": len(data["pile_centers"]),
+            "total_geometry": 1 + len(data["pile_centers"]),
+        },
+        "inputs": data,
+    }
+    result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    done_marker.write_text("done", encoding="utf-8")
 
-    finally:
-        AllplanBaseElements.ProjectService.CloseAllplan()
+    return CreateElementResult()

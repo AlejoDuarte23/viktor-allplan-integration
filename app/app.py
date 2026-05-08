@@ -88,11 +88,12 @@ class Controller(vkt.Controller):
         analysis = PythonAnalysis(
             script=vkt.File.from_path(ALLPLAN_WORKER_DIR / "run_allplan_model.py"),
             files=files,
-            output_filenames=["result_project.zip"],
+            output_filenames=["result_project.zip", "result.json"],
         )
         vkt.progress_message("Starting Allplan worker.")
         analysis.execute(timeout=900)
         analysis.get_output_file("result_project.zip")
+        analysis.get_output_file("result.json")
 
         vkt.UserMessage.success("Allplan project generated.")
 
