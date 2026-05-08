@@ -11,6 +11,12 @@ PROJECT_NAME = "viktor-template"
 DRAWING_FILE_NUMBER = 1
 
 
+def _log(message: str):
+    log_path = Path(__file__).with_name("worker_log.txt")
+    with log_path.open("a", encoding="utf-8") as file:
+        file.write(f"{message}\n")
+
+
 def check_allplan_version(build_ele, version: float) -> bool:
     return True
 
@@ -82,16 +88,24 @@ def _create_model_elements(data: dict) -> ModelEleList:
 
 
 def create_element(build_ele, doc) -> CreateElementResult:
+    _log("PythonPart started.")
     data = _load_inputs()
     done_marker = Path(__file__).with_name("worker_done.txt")
     result_path = Path(__file__).with_name("result.json")
 
+    _log("Opening project.")
     _open_project(doc)
+    _log("Project opened.")
+    _log(f"Loading drawing file {DRAWING_FILE_NUMBER}.")
     _load_drawing_file(doc)
+    _log("Drawing file loaded.")
+    _log("Deleting current document contents.")
     AllplanBaseElements.DrawingFileService.DeleteDocument(doc)
 
+    _log("Creating model elements.")
     elements = _create_model_elements(data)
 
+    _log("Writing elements to Allplan document.")
     AllplanBaseElements.CreateElements(
         doc,
         AllplanGeo.Matrix3D(),
@@ -99,6 +113,7 @@ def create_element(build_ele, doc) -> CreateElementResult:
         [],
         None,
     )
+    _log("CreateElements finished.")
 
     result = {
         "project_name": PROJECT_NAME,
@@ -111,6 +126,8 @@ def create_element(build_ele, doc) -> CreateElementResult:
         "inputs": data,
     }
     result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    _log("result.json written.")
     done_marker.write_text("done", encoding="utf-8")
+    _log("worker_done.txt written. Allplan close was not requested.")
 
     return CreateElementResult()

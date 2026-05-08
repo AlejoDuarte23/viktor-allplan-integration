@@ -3,3 +3,10 @@ __pycache__/
 *.py[cod]
 reference/
 test/
+app/worker/inputs.json
+app/worker/template_project.zip
+app/worker/result.json
+app/worker/result_project.zip
+app/worker/worker_log.txt
+app/worker/local_workflow_log.txt
+app/worker/_template_project_extract/

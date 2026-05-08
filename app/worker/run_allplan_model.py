@@ -11,6 +11,12 @@ PROJECT_NAME = "viktor-template"
 PROJECT_DIR = ALLPLAN_PROJECTS_DIR / f"{PROJECT_NAME}.prj"
 
 
+def log(log_path: Path, message: str):
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as file:
+        file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
+
+
 def install_template_project(template_zip: Path):
     extract_dir = template_zip.parent / "_template_project_extract"
 
@@ -39,11 +45,18 @@ def main():
     pyp_source = workdir / "PileCapWorker.pyp"
     py_source = workdir / "PileCapWorker.py"
     output_zip = workdir / "result_project.zip"
+    output_log = workdir / "worker_log.txt"
 
     if output_zip.exists():
         output_zip.unlink()
 
+    if output_log.exists():
+        output_log.unlink()
+
+    log(output_log, "Worker started.")
+    log(output_log, f"Installing template project from {template_zip}.")
     install_template_project(template_zip)
+    log(output_log, f"Template project installed at {PROJECT_DIR}.")
 
     python_parts_dir = ALLPLAN_LOCAL / "PythonParts" / "ViktorWorker"
     python_scripts_dir = ALLPLAN_LOCAL / "PythonPartsScripts" / "ViktorWorker"
@@ -55,6 +68,7 @@ def main():
     inputs_target = python_scripts_dir / "inputs.json"
     done_marker = python_scripts_dir / "worker_done.txt"
     result_source = python_scripts_dir / "result.json"
+    log_source = python_scripts_dir / "worker_log.txt"
     output_json = workdir / "result.json"
 
     if done_marker.exists():
@@ -66,9 +80,14 @@ def main():
     if output_json.exists():
         output_json.unlink()
 
+    if log_source.exists():
+        log_source.unlink()
+
     shutil.copy2(pyp_source, pyp_target)
     shutil.copy2(py_source, py_target)
     shutil.copy2(inputs_path, inputs_target)
+    log(output_log, f"Copied PythonPart to {pyp_target}.")
+    log(output_log, f"Copied script and inputs to {python_scripts_dir}.")
 
     process = subprocess.Popen(
         [
@@ -78,25 +97,35 @@ def main():
         ],
         cwd=str(workdir),
     )
+    log(output_log, f"Started Allplan with PID {process.pid}.")
 
     deadline = time.time() + 840
     while not done_marker.exists():
         if process.poll() is not None:
+            log(output_log, f"Allplan process ended before marker. Exit code: {process.returncode}.")
             raise RuntimeError(f"Allplan closed before the worker finished. Exit code: {process.returncode}")
 
         if time.time() > deadline:
+            log(output_log, "Timeout waiting for worker_done.txt.")
             process.terminate()
             raise TimeoutError("Allplan worker did not finish within 840 seconds.")
 
         time.sleep(1)
 
+    log(output_log, "worker_done.txt detected.")
+    log(output_log, f"Allplan process state after marker: {process.poll()}.")
     shutil.copy2(result_source, output_json)
+    log(output_log, "Copied result.json back to worker output folder.")
+    with output_log.open("a", encoding="utf-8") as file:
+        file.write("\nPythonPart log:\n")
+        file.write(log_source.read_text(encoding="utf-8"))
 
     shutil.make_archive(
         base_name=str(output_zip.with_suffix("")),
         format="zip",
         root_dir=str(PROJECT_DIR),
     )
+    log(output_log, f"Created {output_zip}.")
 
 
 if __name__ == "__main__":

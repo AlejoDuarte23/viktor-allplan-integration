@@ -36,6 +36,7 @@ path.
 │       ├── PileCapWorker.py
 │       └── viktor-template.prj.zip
 ├── requirements.txt
+├── manual_test_allplan_workflow.py
 └── viktor.config.toml
 ```
 
@@ -85,11 +86,12 @@ class Controller(vkt.Controller):
                 ("PileCapWorker.pyp", vkt.File.from_path(WORKER_DIR / "PileCapWorker.pyp")),
                 ("PileCapWorker.py", vkt.File.from_path(WORKER_DIR / "PileCapWorker.py")),
             ],
-            output_filenames=["result_project.zip", "result.json"],
+            output_filenames=["result_project.zip", "result.json", "worker_log.txt"],
         )
         analysis.execute(timeout=900)
         analysis.get_output_file("result_project.zip")
         analysis.get_output_file("result.json")
+        analysis.get_output_file("worker_log.txt")
         vkt.UserMessage.success("Allplan project generated.")
 ```
 
@@ -115,6 +117,27 @@ Use this requirement:
 viktor>=14.17.0
 ```
 
+## Local Workflow Test
+
+Add `manual_test_allplan_workflow.py` at the repository root to test the worker
+outside VIKTOR. It is a runnable manual test, not pytest. It should use
+`app/worker` directly, write `inputs.json`, copy `viktor-template.prj.zip` as
+`template_project.zip`, run `run_allplan_model.py`, and leave these outputs in
+`app/worker`:
+
+```text
+local_workflow_log.txt
+worker_log.txt
+result.json
+result_project.zip
+```
+
+Run it on the Windows machine with Allplan installed:
+
+```powershell
+python manual_test_allplan_workflow.py
+```
+
 ## Worker Pattern
 
 The Python worker script should:
@@ -124,7 +147,7 @@ The Python worker script should:
 3. Copy `.pyp`, `.py`, and `inputs.json` into Allplan user folders.
 4. Start Allplan directly with `subprocess.Popen`.
 5. Wait for `worker_done.txt` next to the copied PythonPart script.
-6. Copy `result.json` back to the worker folder and zip the generated project folder as `result_project.zip`.
+6. Copy `result.json` and `worker_log.txt` back to the worker folder and zip the generated project folder as `result_project.zip`.
 7. Leave Allplan open for inspection.
 
 Default Allplan paths:
