@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import traceback
 from pathlib import Path
 
 import NemAll_Python_Geometry as AllplanGeo
@@ -33,14 +32,6 @@ def _load_context() -> dict:
 def _load_inputs(context: dict) -> dict:
     with Path(context["inputs_path"]).open("r", encoding="utf-8") as file:
         return json.load(file)
-
-
-def _write_done(context: dict, data: dict) -> None:
-    done_path = context.get("done_path")
-    if not done_path:
-        return
-
-    Path(done_path).write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def _create_cap(data: dict):
@@ -74,38 +65,16 @@ def _create_pile(data: dict, x: float, y: float):
 
 def create_element(_build_ele, _doc) -> CreateElementResult:
     context = _load_context()
+    data = _load_inputs(context)
 
-    try:
-        data = _load_inputs(context)
+    elements = ModelEleList()
+    elements.append_geometry_3d(_create_cap(data))
 
-        elements = ModelEleList()
-        elements.append_geometry_3d(_create_cap(data))
+    for pile in data["pile_centers"]:
+        elements.append_geometry_3d(_create_pile(data, pile["x"], pile["y"]))
 
-        for pile in data["pile_centers"]:
-            elements.append_geometry_3d(_create_pile(data, pile["x"], pile["y"]))
+    result = CreateElementResult(elements)
+    result.placement_point = AllplanGeo.Point3D(0.0, 0.0, 0.0)
+    result.multi_placement = False
 
-        result = CreateElementResult(elements)
-        result.placement_point = AllplanGeo.Point3D(0.0, 0.0, 0.0)
-        result.multi_placement = False
-
-        _write_done(
-            context,
-            {
-                "status": "ok",
-                "message": "Pile cap geometry created by the Allplan PythonPart.",
-                "pile_count": len(data["pile_centers"]),
-            },
-        )
-
-        return result
-
-    except Exception as exc:
-        _write_done(
-            context,
-            {
-                "status": "error",
-                "message": str(exc),
-                "traceback": traceback.format_exc(),
-            },
-        )
-        raise
+    return result

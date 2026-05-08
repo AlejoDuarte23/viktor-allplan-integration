@@ -87,6 +87,7 @@ class Controller(vkt.Controller):
             ("inputs.json", vkt.File.from_data(json.dumps(model.to_worker_input(), indent=2))),
             ("PileCapWorker.pyp", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.pyp")),
             ("PileCapWorker.py", vkt.File.from_path(ALLPLAN_WORKER_DIR / "PileCapWorker.py")),
+            ("run_allplan_model.cmd", vkt.File.from_path(ALLPLAN_WORKER_DIR / "run_allplan_model.cmd")),
         ]
 
         analysis = PythonAnalysis(
@@ -96,4 +97,4 @@ class Controller(vkt.Controller):
         vkt.progress_message("Starting Allplan Python worker.")
         analysis.execute(timeout=900)
 
-        vkt.UserMessage.success("Allplan PythonPart finished creating the pile cap geometry.")
+        vkt.UserMessage.success("Allplan command finished.")

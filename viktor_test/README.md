@@ -8,8 +8,8 @@ The app does two things:
 - shows the pile cap and four piles in a VIKTOR `GeometryView`
 - sends the same parameters to Allplan through a Python worker action
 
-It does not retrieve results from Allplan. The worker only starts Allplan and
-waits for a local completion marker from the PythonPart.
+It does not retrieve results from Allplan. The Python worker calls a Windows
+CMD script that starts Allplan with `start /wait`.
 
 ## Local VIKTOR Run
 
@@ -39,8 +39,8 @@ No executable key configuration is used.
 
 When the `Create geometry in Allplan` button is clicked:
 
-1. VIKTOR sends `inputs.json`, `run_allplan_model.py`, `PileCapWorker.pyp`, and
-   `PileCapWorker.py` to the Python worker.
+1. VIKTOR sends `inputs.json`, `run_allplan_model.py`, `run_allplan_model.cmd`,
+   `PileCapWorker.pyp`, and `PileCapWorker.py` to the Python worker.
 2. The worker copies the PythonPart files and inputs to:
 
 ```text
@@ -54,8 +54,9 @@ $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\ViktorWorke
 & "C:\Program Files\Allplan\Allplan 2026\Prg\Allplan_2026.exe" -o "@$HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonParts\ViktorWorker\PileCapWorker.pyp"
 ```
 
-4. Allplan loads the PythonPart and creates one pile cap with four piles.
-5. The PythonPart writes a local done marker, and the Python worker returns.
+4. `run_allplan_model.py` calls `run_allplan_model.cmd`.
+5. The CMD script starts Allplan with `start /wait`.
+6. Allplan loads the PythonPart and creates one pile cap with four piles.
 
 ## Current Model
 
@@ -64,4 +65,3 @@ $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\ViktorWorke
 - parametric dimensions and pile spacing
 - no rebar yet
 - no returned output file
-- local completion marker only, not returned to VIKTOR
