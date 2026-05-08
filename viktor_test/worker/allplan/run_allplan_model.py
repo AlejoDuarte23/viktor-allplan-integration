@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 
-STARTUP_WAIT_SECONDS = 5
+ALLPLAN_BUILD_TIMEOUT_SECONDS = 840
 
 
 def _allplan_exe() -> Path:
@@ -59,11 +59,22 @@ def main() -> int:
     py_target = python_scripts_dir / "PileCapWorker.py"
     inputs_target = python_scripts_dir / "inputs.json"
     context_path = python_scripts_dir / "worker_context.json"
+    done_path = python_scripts_dir / f"pile_cap_done_{int(time.time())}_{os.getpid()}.json"
 
     shutil.copy2(pyp_source, pyp_target)
     shutil.copy2(py_source, py_target)
     shutil.copy2(inputs_path, inputs_target)
-    _write_json(context_path, {"inputs_path": str(inputs_target)})
+
+    if done_path.exists():
+        done_path.unlink()
+
+    _write_json(
+        context_path,
+        {
+            "inputs_path": str(inputs_target),
+            "done_path": str(done_path),
+        },
+    )
 
     env = os.environ.copy()
     env["ALLPLAN_WORKER_CONTEXT"] = str(context_path)
@@ -74,12 +85,21 @@ def main() -> int:
         env=env,
     )
 
-    time.sleep(STARTUP_WAIT_SECONDS)
+    deadline = time.time() + ALLPLAN_BUILD_TIMEOUT_SECONDS
 
-    if process.poll() not in (None, 0):
-        raise RuntimeError(f"Allplan failed to start. Return code: {process.returncode}")
+    while time.time() < deadline:
+        if done_path.is_file():
+            done_data = json.loads(done_path.read_text(encoding="utf-8"))
+            if done_data.get("status") != "ok":
+                raise RuntimeError(done_data.get("message", "Allplan PythonPart failed."))
+            return 0
 
-    return 0
+        if process.poll() not in (None, 0):
+            raise RuntimeError(f"Allplan failed to start. Return code: {process.returncode}")
+
+        time.sleep(1)
+
+    raise TimeoutError("Allplan did not finish creating the pile cap before timeout.")
 
 
 if __name__ == "__main__":

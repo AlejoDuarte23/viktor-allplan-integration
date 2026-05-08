@@ -9,7 +9,7 @@ The app does two things:
 - sends the same parameters to Allplan through a Python worker action
 
 It does not retrieve results from Allplan. The worker only starts Allplan and
-asks it to create the geometry.
+waits for a local completion marker from the PythonPart.
 
 ## Local VIKTOR Run
 
@@ -55,6 +55,7 @@ $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\ViktorWorke
 ```
 
 4. Allplan loads the PythonPart and creates one pile cap with four piles.
+5. The PythonPart writes a local done marker, and the Python worker returns.
 
 ## Current Model
 
@@ -63,3 +64,4 @@ $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\ViktorWorke
 - parametric dimensions and pile spacing
 - no rebar yet
 - no returned output file
+- local completion marker only, not returned to VIKTOR

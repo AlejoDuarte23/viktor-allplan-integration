@@ -96,4 +96,4 @@ class Controller(vkt.Controller):
         vkt.progress_message("Starting Allplan Python worker.")
         analysis.execute(timeout=900)
 
-        vkt.UserMessage.success("Allplan launch command finished. Check Allplan for the generated geometry.")
+        vkt.UserMessage.success("Allplan PythonPart finished creating the pile cap geometry.")
