@@ -11,7 +11,7 @@ Use this skill to create a simple VIKTOR-to-Allplan flow:
 2. Preview the model with `GeometryView`.
 3. Send the same parameters to a Windows Python worker with `PythonAnalysis`.
 4. Copy a PythonPart into Allplan user folders.
-5. Start Allplan through `cmd.exe` with a simple `start /wait` command from the Python launcher.
+5. Start Allplan directly from the Python launcher.
 
 Keep the first version small: geometry first, then reinforcement or exports later.
 Prefer one obvious worker path over configurable fallbacks. Do not add environment
@@ -112,7 +112,7 @@ The Python worker script should:
 
 1. Read `inputs.json` from the worker directory.
 2. Copy `.pyp`, `.py`, and `inputs.json` into Allplan user folders.
-3. Call `cmd.exe /c` with the simple blocking Allplan command.
+3. Start Allplan directly with `subprocess.run`.
 
 Default Allplan paths:
 
@@ -124,24 +124,25 @@ $HOME\Documents\Nemetschek\Allplan\2026\Usr\Local\PythonPartsScripts\ViktorWorke
 ## Launcher Command
 
 Do not add a separate `run_allplan_model.cmd` file. Keep the command in
-`run_allplan_model.py`.
+`run_allplan_model.py`. Avoid `cmd.exe /c start`; it adds Windows shell parsing
+and can misread quoted paths.
 
 ```python
 ALLPLAN_EXE = Path(r"C:\Program Files\Allplan\Allplan 2026\Prg\Allplan_2026.exe")
 
 subprocess.run(
     [
-        "cmd.exe",
-        "/c",
-        f'start "" /wait "{ALLPLAN_EXE}" -o "@{pyp_target}" & exit /b %ERRORLEVEL%',
+        str(ALLPLAN_EXE),
+        "-o",
+        f"@{pyp_target}",
     ],
     cwd=str(workdir),
     check=True,
 )
 ```
 
-Important tradeoff: `start /wait` waits for the Allplan process, not necessarily
-the PythonPart function. If Allplan stays open, the worker stays blocked.
+`subprocess.run` waits for the Allplan process. If Allplan stays open, the
+worker stays blocked.
 
 ## PythonPart Pattern
 
