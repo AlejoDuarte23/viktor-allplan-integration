@@ -91,7 +91,7 @@ class Controller(vkt.Controller):
         vkt.progress_message("Starting Allplan Python worker.")
         analysis.execute(timeout=900)
 
-        vkt.UserMessage.success("Allplan command finished.")
+        vkt.UserMessage.success("Allplan created the pile cap geometry and closed.")
 
     @staticmethod
     def get_pile_centers(pile_spacing_x: float, pile_spacing_y: float) -> list[dict[str, float | str]]:

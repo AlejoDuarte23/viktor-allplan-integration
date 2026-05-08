@@ -12,10 +12,11 @@ Use this skill to create a simple VIKTOR-to-Allplan flow:
 3. Send the same parameters to a Windows Python worker with `PythonAnalysis`.
 4. Copy a PythonPart into Allplan user folders.
 5. Start Allplan directly from the Python launcher.
+6. Close Allplan from the PythonPart when the worker must finish automatically.
 
 Keep the first version small: geometry first, then reinforcement or exports later.
 Prefer one obvious worker path over configurable fallbacks. Do not add environment
-overrides, context indirection, preflight file checks, helper scripts, or adapter
+overrides, preflight file checks, helper scripts, or adapter
 objects unless the user asks for them or the app actually needs a second runtime
 path.
 
@@ -81,7 +82,7 @@ class Controller(vkt.Controller):
             ],
         )
         analysis.execute(timeout=900)
-        vkt.UserMessage.success("Allplan command finished.")
+        vkt.UserMessage.success("Allplan created the geometry and closed.")
 ```
 
 Use this config:
@@ -142,7 +143,8 @@ subprocess.run(
 ```
 
 `subprocess.run` waits for the Allplan process. If Allplan stays open, the
-worker stays blocked.
+worker stays blocked. To unblock automatically, the PythonPart should create the
+geometry directly and call `ProjectService.CloseAllplan()`.
 
 ## PythonPart Pattern
 
@@ -166,8 +168,7 @@ def check_allplan_version(build_ele, version):
 
 
 def create_element(build_ele, doc):
-    # Read inputs.json next to this file, create Allplan geometry, and return
-    # CreateElementResult. Keep simple worker scripts in this entry point unless
-    # the geometry becomes large enough to justify helpers.
+    # Read inputs, create Allplan geometry directly in the drawing file, then
+    # call ProjectService.CloseAllplan() so the Python worker can finish.
     ...
 ```
