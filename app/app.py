@@ -1,4 +1,5 @@
 import json
+import uuid
 from pathlib import Path
 
 import viktor as vkt
@@ -25,9 +26,9 @@ class Parametrization(vkt.Parametrization):
     geometry.pile_spacing_y = vkt.NumberField("Pile spacing Y", default=1800.0, min=500.0, suffix="mm", flex=50)
 
     allplan = vkt.Section("Allplan", initially_expanded=True)
-    allplan.create = vkt.ActionButton(
-        "Create geometry in Allplan",
-        method="create_in_allplan",
+    allplan.download = vkt.DownloadButton(
+        "Download Allplan project",
+        method="download_allplan_project",
         longpoll=True,
         flex=100,
     )
@@ -68,8 +69,10 @@ class Controller(vkt.Controller):
 
         return vkt.GeometryResult(geometry=geometry)
 
-    def create_in_allplan(self, params, **kwargs) -> None:
+    def download_allplan_project(self, params, **kwargs):
+        run_id = uuid.uuid4().hex
         worker_input = {
+            "run_id": run_id,
             "cap_length": params.geometry.cap_length,
             "cap_width": params.geometry.cap_width,
             "cap_height": params.geometry.cap_height,
@@ -92,11 +95,11 @@ class Controller(vkt.Controller):
         )
         vkt.progress_message("Starting Allplan worker.")
         analysis.execute(timeout=900)
-        analysis.get_output_file("result_project.zip")
+        result_project_zip = analysis.get_output_file("result_project.zip")
         analysis.get_output_file("result.json")
         analysis.get_output_file("worker_log.txt")
 
-        vkt.UserMessage.success("Allplan project generated.")
+        return vkt.DownloadResult(result_project_zip, f"result_project_{run_id}.zip")
 
     @staticmethod
     def get_pile_centers(pile_spacing_x: float, pile_spacing_y: float) -> list[dict[str, float | str]]:

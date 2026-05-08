@@ -9,7 +9,7 @@ Use this skill to create a simple VIKTOR-to-Allplan flow:
 
 1. Build parametric inputs in VIKTOR.
 2. Preview the model with `GeometryView`.
-3. Send the same parameters to a Windows Python worker with `PythonAnalysis`.
+3. Use a `DownloadButton` to send the same parameters to a Windows Python worker with `PythonAnalysis`.
 4. Send a template Allplan project ZIP to the worker.
 5. Install the template project into Allplan's real project folder.
 6. Copy a PythonPart into Allplan user folders.
@@ -48,6 +48,7 @@ is configured with the Python worker.
 ```python
 from pathlib import Path
 import json
+import uuid
 import viktor as vkt
 from viktor.external.python import PythonAnalysis
 
@@ -72,8 +73,10 @@ class Controller(vkt.Controller):
         # Build a lightweight VIKTOR geometry preview directly from params.
         return vkt.GeometryResult(geometry=[])
 
-    def create_in_allplan(self, params, **kwargs):
+    def download_allplan_project(self, params, **kwargs):
+        run_id = uuid.uuid4().hex
         data = {
+            "run_id": run_id,
             "cap_length": params.geometry.cap_length,
             "pile_centers": self.pile_centers(params.geometry.pile_spacing_x, params.geometry.pile_spacing_y),
         }
@@ -89,10 +92,10 @@ class Controller(vkt.Controller):
             output_filenames=["result_project.zip", "result.json", "worker_log.txt"],
         )
         analysis.execute(timeout=900)
-        analysis.get_output_file("result_project.zip")
+        result_project_zip = analysis.get_output_file("result_project.zip")
         analysis.get_output_file("result.json")
         analysis.get_output_file("worker_log.txt")
-        vkt.UserMessage.success("Allplan project generated.")
+        return vkt.DownloadResult(result_project_zip, f"result_project_{run_id}.zip")
 ```
 
 Use this config:

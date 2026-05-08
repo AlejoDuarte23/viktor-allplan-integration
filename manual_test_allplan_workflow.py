@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 
@@ -42,6 +43,7 @@ def main():
             path.unlink()
 
     worker_input = {
+        "run_id": uuid.uuid4().hex,
         "cap_length": 4000.0,
         "cap_width": 3000.0,
         "cap_height": 800.0,

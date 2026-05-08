@@ -90,8 +90,10 @@ def _create_model_elements(data: dict) -> ModelEleList:
 def create_element(build_ele, doc) -> CreateElementResult:
     _log("PythonPart started.")
     data = _load_inputs()
+    run_id = data["run_id"]
     done_marker = Path(__file__).with_name("worker_done.txt")
     result_path = Path(__file__).with_name("result.json")
+    _log(f"Run ID: {run_id}.")
 
     _log("Opening project.")
     _open_project(doc)
@@ -116,6 +118,7 @@ def create_element(build_ele, doc) -> CreateElementResult:
     _log("CreateElements finished.")
 
     result = {
+        "run_id": run_id,
         "project_name": PROJECT_NAME,
         "drawing_file_number": DRAWING_FILE_NUMBER,
         "created": {
