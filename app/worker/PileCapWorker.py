@@ -1,4 +1,5 @@
 import json
+import traceback
 from pathlib import Path
 
 import NemAll_Python_BaseElements as AllplanBaseElements
@@ -17,19 +18,29 @@ def _log(message: str):
         file.write(f"{message}\n")
 
 
+def _write_error(error: BaseException):
+    error_path = Path(__file__).with_name("worker_error.txt")
+    error_path.write_text(
+        "".join(traceback.format_exception(type(error), error, error.__traceback__)),
+        encoding="utf-8",
+    )
+
+
 def check_allplan_version(build_ele, version: float) -> bool:
     return True
 
 
 def _load_inputs() -> dict:
     with Path(__file__).with_name("inputs.json").open("r", encoding="utf-8") as file:
-        data = json.load(file)
-
-    return data
+        return json.load(file)
 
 
 def _open_project(doc):
     current_project_name, host_name = AllplanBaseElements.ProjectService.GetCurrentProjectNameAndHost()
+
+    if current_project_name == PROJECT_NAME:
+        _log(f"Project '{PROJECT_NAME}' is already active.")
+        return
 
     open_result = AllplanBaseElements.ProjectService.OpenProject(
         doc,
@@ -37,16 +48,20 @@ def _open_project(doc):
         PROJECT_NAME,
     )
 
+    _log(f"OpenProject returned: {open_result}")
+
     if open_result not in ("Project opened", "Active project", "project opened"):
         raise RuntimeError(
-            f"Could not open ALLPLAN project '{PROJECT_NAME}'. "
+            f"Could not open Allplan project '{PROJECT_NAME}'. "
             f"Current project was '{current_project_name}'. "
-            f"ALLPLAN returned: '{open_result}'."
+            f"Allplan returned: '{open_result}'."
         )
 
 
 def _load_drawing_file(doc):
-    AllplanBaseElements.DrawingFileService.LoadFile(
+    drawing_service = AllplanBaseElements.DrawingFileService()
+
+    drawing_service.LoadFile(
         doc,
         DRAWING_FILE_NUMBER,
         AllplanBaseElements.DrawingFileLoadState.ActiveForeground,
@@ -61,6 +76,7 @@ def _create_model_elements(data: dict) -> ModelEleList:
         AllplanGeo.Vector3D(1.0, 0.0, 0.0),
         AllplanGeo.Vector3D(0.0, 0.0, 1.0),
     )
+
     elements.append_geometry_3d(
         AllplanGeo.BRep3D.CreateCuboid(
             cap_placement,
@@ -76,6 +92,7 @@ def _create_model_elements(data: dict) -> ModelEleList:
             AllplanGeo.Vector3D(1.0, 0.0, 0.0),
             AllplanGeo.Vector3D(0.0, 0.0, 1.0),
         )
+
         elements.append_geometry_3d(
             AllplanGeo.BRep3D.CreateCylinder(
                 pile_placement,
@@ -88,49 +105,61 @@ def _create_model_elements(data: dict) -> ModelEleList:
 
 
 def create_element(build_ele, doc) -> CreateElementResult:
-    _log("PythonPart started.")
-    data = _load_inputs()
-    run_id = data["run_id"]
-    done_marker = Path(__file__).with_name("worker_done.txt")
-    result_path = Path(__file__).with_name("result.json")
-    _log(f"Run ID: {run_id}.")
+    try:
+        _log("PythonPart started.")
 
-    _log("Opening project.")
-    _open_project(doc)
-    _log("Project opened.")
-    _log(f"Loading drawing file {DRAWING_FILE_NUMBER}.")
-    _load_drawing_file(doc)
-    _log("Drawing file loaded.")
-    _log("Deleting current document contents.")
-    AllplanBaseElements.DrawingFileService.DeleteDocument(doc)
+        data = _load_inputs()
+        run_id = data["run_id"]
 
-    _log("Creating model elements.")
-    elements = _create_model_elements(data)
+        done_marker = Path(__file__).with_name("worker_done.txt")
+        result_path = Path(__file__).with_name("result.json")
 
-    _log("Writing elements to Allplan document.")
-    AllplanBaseElements.CreateElements(
-        doc,
-        AllplanGeo.Matrix3D(),
-        elements,
-        [],
-        None,
-    )
-    _log("CreateElements finished.")
+        _log(f"Run ID: {run_id}.")
+        _log("Opening project.")
+        _open_project(doc)
 
-    result = {
-        "run_id": run_id,
-        "project_name": PROJECT_NAME,
-        "drawing_file_number": DRAWING_FILE_NUMBER,
-        "created": {
-            "pile_cap": 1,
-            "piles": len(data["pile_centers"]),
-            "total_geometry": 1 + len(data["pile_centers"]),
-        },
-        "inputs": data,
-    }
-    result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    _log("result.json written.")
-    done_marker.write_text("done", encoding="utf-8")
-    _log("worker_done.txt written. Allplan close was not requested.")
+        _log("Project opened.")
+        _log(f"Loading drawing file {DRAWING_FILE_NUMBER}.")
+        _load_drawing_file(doc)
 
-    return CreateElementResult()
+        _log("Drawing file loaded.")
+        _log("Skipping document deletion.")
+
+        _log("Creating model elements.")
+        elements = _create_model_elements(data)
+
+        _log("Writing elements to Allplan document.")
+        AllplanBaseElements.CreateElements(
+            doc,
+            AllplanGeo.Matrix3D(),
+            elements,
+            [],
+            None,
+        )
+
+        _log("CreateElements finished.")
+
+        result = {
+            "run_id": run_id,
+            "project_name": PROJECT_NAME,
+            "drawing_file_number": DRAWING_FILE_NUMBER,
+            "created": {
+                "pile_cap": 1,
+                "piles": len(data["pile_centers"]),
+                "total_geometry": 1 + len(data["pile_centers"]),
+            },
+            "inputs": data,
+        }
+
+        result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        _log("result.json written.")
+
+        done_marker.write_text("done", encoding="utf-8")
+        _log("worker_done.txt written. Allplan close was not requested.")
+
+        return CreateElementResult()
+
+    except BaseException as error:
+        _log(f"Worker failed: {error}")
+        _write_error(error)
+        raise

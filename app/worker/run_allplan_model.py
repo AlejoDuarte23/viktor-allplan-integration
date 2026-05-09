@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 import time
@@ -17,14 +18,20 @@ def log(log_path: Path, message: str):
         file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
 
 
-def install_template_project(template_zip: Path):
+def install_template_project(template_zip: Path, log_path: Path):
     extract_dir = template_zip.parent / "_template_project_extract"
 
     if extract_dir.exists():
         shutil.rmtree(extract_dir)
 
     if PROJECT_DIR.exists():
-        shutil.rmtree(PROJECT_DIR)
+        try:
+            shutil.rmtree(PROJECT_DIR)
+            log(log_path, f"Removed existing project at {PROJECT_DIR}.")
+        except Exception as e:
+            log(log_path, f"Could not remove existing project (files may be locked): {e}")
+            log(log_path, "Will reuse existing project.")
+            return
 
     extract_dir.mkdir(parents=True, exist_ok=True)
     shutil.unpack_archive(str(template_zip), str(extract_dir), "zip")
@@ -55,8 +62,8 @@ def main():
 
     log(output_log, "Worker started.")
     log(output_log, f"Installing template project from {template_zip}.")
-    install_template_project(template_zip)
-    log(output_log, f"Template project installed at {PROJECT_DIR}.")
+    install_template_project(template_zip, output_log)
+    log(output_log, f"Template project ready at {PROJECT_DIR}.")
 
     python_parts_dir = ALLPLAN_LOCAL / "PythonParts" / "ViktorWorker"
     python_scripts_dir = ALLPLAN_LOCAL / "PythonPartsScripts" / "ViktorWorker"
@@ -69,6 +76,7 @@ def main():
     done_marker = python_scripts_dir / "worker_done.txt"
     result_source = python_scripts_dir / "result.json"
     log_source = python_scripts_dir / "worker_log.txt"
+    error_source = python_scripts_dir / "worker_error.txt"
     output_json = workdir / "result.json"
 
     if done_marker.exists():
@@ -82,6 +90,9 @@ def main():
 
     if log_source.exists():
         log_source.unlink()
+
+    if error_source.exists():
+        error_source.unlink()
 
     shutil.copy2(pyp_source, pyp_target)
     shutil.copy2(py_source, py_target)
@@ -101,6 +112,12 @@ def main():
 
     deadline = time.time() + 840
     while not done_marker.exists():
+        if error_source.exists():
+            error_text = error_source.read_text(encoding="utf-8")
+            log(output_log, "worker_error.txt detected.")
+            log(output_log, error_text)
+            raise RuntimeError(f"Allplan worker failed:\n{error_text}")
+
         if process.poll() is not None:
             log(output_log, f"Allplan process ended before marker. Exit code: {process.returncode}.")
             raise RuntimeError(f"Allplan closed before the worker finished. Exit code: {process.returncode}")
