@@ -149,7 +149,7 @@ The Python worker script should:
 2. Extract the template ZIP into Allplan's real project folder.
 3. Copy `.pyp`, `.py`, and `inputs.json` into Allplan user folders.
 4. Start Allplan directly with `subprocess.Popen`.
-5. Wait for `worker_done.txt` next to the copied PythonPart script.
+5. Wait for `worker_done.txt` next to the copied PythonPart script and fail fast if `worker_error.txt` appears.
 6. Copy `result.json` and `worker_log.txt` back to the worker folder and zip the generated project folder as `result_project.zip`.
 7. Leave Allplan open for inspection.
 
@@ -183,8 +183,15 @@ process = subprocess.Popen(
 )
 
 while not done_marker.exists():
+    if error_source.exists():
+        error_text = error_source.read_text(encoding="utf-8")
+        raise RuntimeError(f"Allplan worker failed:\n{error_text}")
+
     if process.poll() is not None:
-        raise RuntimeError("Allplan closed before the worker finished.")
+        time.sleep(5)
+        if not done_marker.exists():
+            raise RuntimeError("Allplan closed before the worker finished.")
+        break
     time.sleep(1)
 
 shutil.make_archive(
@@ -221,6 +228,20 @@ def check_allplan_version(build_ele, version):
 
 def create_element(build_ele, doc):
     # Read inputs, open project viktor-template, load drawing slot 1, create
-    # Allplan geometry, then write result.json and worker_done.txt.
+    # Allplan geometry, then write result.json and worker_done.txt. On failure,
+    # write worker_error.txt with the traceback.
     ...
 ```
+
+## Open Session Sample
+
+Use `sample_open_allplan_app` for the no-project-install Windows test. This app
+only registers the PythonPart into Allplan's local user folders. It assumes
+Allplan is already open with an empty project and an active drawing file, and it
+does not send a project ZIP, start Allplan, close Allplan, or return a project
+ZIP.
+
+The open-session PythonPart writes `execution_log.txt`,
+`execution_result.json`, and `execution_done.txt` in
+`PythonPartsScripts\ViktorOpenSession`. On failure it writes
+`execution_error.txt`.
