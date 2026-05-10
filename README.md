@@ -24,6 +24,25 @@ ALLPLAN project. During that process, the worker:
 - waits for the PythonPart completion marker
 - zips the updated project and returns it to VIKTOR
 
+## Automation flow
+
+![ALLPLAN automation flow](assets/allplan-flow.png)
+
+## Template project note
+
+The file `app/worker/viktor-template.prj.zip` should be a ZIP export of an
+empty ALLPLAN project.
+
+That template project should already be valid and registered in ALLPLAN before
+you package it as the sample input project. The worker installs that project
+into the ALLPLAN projects folder and uses it as the starting point for the
+automation run.
+
+Current limitation: the sample assumes the ZIP contains a project structure
+that ALLPLAN can open directly as `viktor-template.prj`. If the ZIP was created
+from an invalid, incomplete, or differently named project, the worker install
+step will not produce a usable project.
+
 ## App structure
 
 ```text
