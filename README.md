@@ -28,6 +28,14 @@ ALLPLAN project. During that process, the worker:
 
 ![ALLPLAN automation flow](assets/allplan-flow.png)
 
+## VIKTOR app
+
+![VIKTOR app](assets/viktor-app.png)
+
+## ALLPLAN result
+
+![ALLPLAN result](assets/allplan-results.png)
+
 ## Template project note
 
 The file `app/worker/viktor-template.prj.zip` should be a ZIP export of an
