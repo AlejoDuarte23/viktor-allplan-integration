@@ -120,10 +120,6 @@ def create_element(build_ele, doc) -> CreateElementResult:
         logMessage(f"Loading drawing file {DRAWING_FILE_NUMBER}.")
         loadDrawingFile(doc)
 
-        logMessage("Drawing file loaded.")
-        logMessage("Skipping document deletion.")
-
-        logMessage("Creating model elements.")
         elements = createModelElements(data)
 
         logMessage("Writing elements to Allplan document.")
