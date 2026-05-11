@@ -12,13 +12,13 @@ PROJECT_NAME = "viktor-template"
 DRAWING_FILE_NUMBER = 1
 
 
-def _log(message: str):
+def logMessage(message: str):
     log_path = Path(__file__).with_name("worker_log.txt")
     with log_path.open("a", encoding="utf-8") as file:
         file.write(f"{message}\n")
 
 
-def _write_error(error: BaseException):
+def writeError(error: BaseException):
     error_path = Path(__file__).with_name("worker_error.txt")
     error_path.write_text(
         "".join(traceback.format_exception(type(error), error, error.__traceback__)),
@@ -30,16 +30,16 @@ def check_allplan_version(build_ele, version: float) -> bool:
     return True
 
 
-def _load_inputs() -> dict:
+def loadInputs() -> dict:
     with Path(__file__).with_name("inputs.json").open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
-def _open_project(doc):
+def openProject(doc):
     current_project_name, host_name = AllplanBaseElements.ProjectService.GetCurrentProjectNameAndHost()
 
     if current_project_name == PROJECT_NAME:
-        _log(f"Project '{PROJECT_NAME}' is already active.")
+        logMessage(f"Project '{PROJECT_NAME}' is already active.")
         return
 
     open_result = AllplanBaseElements.ProjectService.OpenProject(
@@ -48,7 +48,7 @@ def _open_project(doc):
         PROJECT_NAME,
     )
 
-    _log(f"OpenProject returned: {open_result}")
+    logMessage(f"OpenProject returned: {open_result}")
 
     if open_result not in ("Project opened", "Active project", "project opened"):
         raise RuntimeError(
@@ -58,7 +58,7 @@ def _open_project(doc):
         )
 
 
-def _load_drawing_file(doc):
+def loadDrawingFile(doc):
     drawing_service = AllplanBaseElements.DrawingFileService()
 
     drawing_service.LoadFile(
@@ -68,7 +68,7 @@ def _load_drawing_file(doc):
     )
 
 
-def _create_model_elements(data: dict) -> ModelEleList:
+def createModelElements(data: dict) -> ModelEleList:
     elements = ModelEleList()
 
     cap_placement = AllplanGeo.AxisPlacement3D(
@@ -104,29 +104,29 @@ def _create_model_elements(data: dict) -> ModelEleList:
 
 def create_element(build_ele, doc) -> CreateElementResult:
     try:
-        _log("PythonPart started.")
+        logMessage("PythonPart started.")
 
-        data = _load_inputs()
+        data = loadInputs()
         run_id = data["run_id"]
 
         done_marker = Path(__file__).with_name("worker_done.txt")
         result_path = Path(__file__).with_name("result.json")
 
-        _log(f"Run ID: {run_id}.")
-        _log("Opening project.")
-        _open_project(doc)
+        logMessage(f"Run ID: {run_id}.")
+        logMessage("Opening project.")
+        openProject(doc)
 
-        _log("Project opened.")
-        _log(f"Loading drawing file {DRAWING_FILE_NUMBER}.")
-        _load_drawing_file(doc)
+        logMessage("Project opened.")
+        logMessage(f"Loading drawing file {DRAWING_FILE_NUMBER}.")
+        loadDrawingFile(doc)
 
-        _log("Drawing file loaded.")
-        _log("Skipping document deletion.")
+        logMessage("Drawing file loaded.")
+        logMessage("Skipping document deletion.")
 
-        _log("Creating model elements.")
-        elements = _create_model_elements(data)
+        logMessage("Creating model elements.")
+        elements = createModelElements(data)
 
-        _log("Writing elements to Allplan document.")
+        logMessage("Writing elements to Allplan document.")
         AllplanBaseElements.CreateElements(
             doc,
             AllplanGeo.Matrix3D(),
@@ -135,7 +135,7 @@ def create_element(build_ele, doc) -> CreateElementResult:
             None,
         )
 
-        _log("CreateElements finished.")
+        logMessage("CreateElements finished.")
 
         result = {
             "run_id": run_id,
@@ -150,14 +150,14 @@ def create_element(build_ele, doc) -> CreateElementResult:
         }
 
         result_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-        _log("result.json written.")
+        logMessage("result.json written.")
 
         done_marker.write_text("done", encoding="utf-8")
-        _log("worker_done.txt written. Allplan close was not requested.")
+        logMessage("worker_done.txt written. Allplan close was not requested.")
 
         return CreateElementResult()
 
     except BaseException as error:
-        _log(f"Worker failed: {error}")
-        _write_error(error)
+        logMessage(f"Worker failed: {error}")
+        writeError(error)
         raise
