@@ -75,8 +75,3 @@ From the repository root:
 ```powershell
 viktor-cli start
 ```
-
-## Reference
-
-The implementation in this repository matches the example app referenced from:
-[Would you like to see an example?](https://docs-staging.viktor.ai/docs/create-apps/software-integrations/allplan/#would-you-like-to-see-an-example)
