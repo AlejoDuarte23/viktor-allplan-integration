@@ -7,7 +7,7 @@ import NemAll_Python_Geometry as AllplanGeo
 from CreateElementResult import CreateElementResult
 from TypeCollections.ModelEleList import ModelEleList
 
-
+# Remember to create an empty project with this name in the Allplan project administration.
 PROJECT_NAME = "viktor-template"
 DRAWING_FILE_NUMBER = 1
 
